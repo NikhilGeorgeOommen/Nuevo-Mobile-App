@@ -42,6 +42,8 @@ class UserNotifier extends StateNotifier<AsyncValue<User?>> {
     String? phoneNumber,
     String? profileImageUrl,
     String? dateOfBirth,
+    double? height,
+    double? weight,
   }) async {
     // Optimistic update or set loading
     state = const AsyncValue.loading(); 
@@ -51,6 +53,8 @@ class UserNotifier extends StateNotifier<AsyncValue<User?>> {
       phoneNumber: phoneNumber,
       profileImageUrl: profileImageUrl,
       dateOfBirth: dateOfBirth,
+      height: height,
+      weight: weight,
     ));
     
     result.fold(

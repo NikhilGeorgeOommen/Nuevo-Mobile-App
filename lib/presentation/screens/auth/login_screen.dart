@@ -133,8 +133,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             backgroundColor: AppColors.error,
           ),
         );
-      } else if (next.status == AuthStatus.authenticated && previous?.status != AuthStatus.authenticated) {
-        context.go('/home');
       }
     });
 

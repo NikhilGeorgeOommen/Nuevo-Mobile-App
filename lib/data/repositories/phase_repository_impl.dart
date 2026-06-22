@@ -129,22 +129,22 @@ class PhaseRepositoryImpl implements PhaseRepository {
     }
   }
 
-  @override
-  Future<Either<Failure, PatientTaskModel>> markTaskCompleted(
-      String taskId) async {
-    try {
-      final response = await apiClient.markTaskCompleted(taskId);
-      if (response.success && response.data != null) {
-        return Right(response.data!);
-      } else {
-        return Left(ServerFailure(response.message ?? 'Server error'));
-      }
-    } on AppException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
+  // @override
+  // Future<Either<Failure, PatientTaskModel>> markTaskCompleted(
+  //     String taskId) async {
+  //   try {
+  //     final response = await apiClient.markTaskCompleted(taskId);
+  //     if (response.success && response.data != null) {
+  //       return Right(response.data!);
+  //     } else {
+  //       return Left(ServerFailure(response.message ?? 'Server error'));
+  //     }
+  //   } on AppException catch (e) {
+  //     return Left(ServerFailure(e.message));
+  //   } catch (e) {
+  //     return Left(ServerFailure(e.toString()));
+  //   }
+  // }
 
   @override
   Future<Either<Failure, PatientTaskModel>> updateTaskStatus(

@@ -23,6 +23,8 @@ class UserModel {
   final String? createdAt;
   @JsonKey(name: 'last_login_at')
   final String? lastLoginAt;
+  final double? height;
+  final double? weight;
   
   const UserModel({
     required this.id,
@@ -35,6 +37,8 @@ class UserModel {
     this.subscription,
     this.createdAt,
     this.lastLoginAt,
+    this.height,
+    this.weight,
   });
   
   /// Factory constructor for creating a UserModel from JSON
@@ -62,6 +66,8 @@ class UserModel {
       subscription: subscription?.toEntity(),
       createdAt: createdAt != null ? DateTime.tryParse(createdAt!) : null,
       lastLoginAt: lastLoginAt != null ? DateTime.tryParse(lastLoginAt!) : null,
+      height: height,
+      weight: weight,
     );
   }
   
@@ -84,6 +90,8 @@ class UserModel {
           : null,
       createdAt: user.createdAt?.toIso8601String(),
       lastLoginAt: user.lastLoginAt?.toIso8601String(),
+      height: user.height,
+      weight: user.weight,
     );
   }
 }

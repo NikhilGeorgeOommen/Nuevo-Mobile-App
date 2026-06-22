@@ -19,14 +19,12 @@ final authStateListenerProvider = Provider<void>((ref) {
     final isLoggedIn = next.status == AuthStatus.authenticated;
 
     if (wasLoggedIn != isLoggedIn) {
-      Future.microtask(() {
-        _clearAll(ref);
-      });
+      Future.microtask(() => clearAllProviders(ref));
     }
   });
 });
 
-void _clearAll(Ref ref) {
+void clearAllProviders(Ref ref) {
   ref.invalidate(homeDashboardProvider);
   ref.invalidate(dietPlanProvider);
   ref.invalidate(specialistListProvider);

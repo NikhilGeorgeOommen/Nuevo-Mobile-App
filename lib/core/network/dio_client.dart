@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
+import 'package:flutter/foundation.dart';
+import 'package:logger/logger.dart';
 import '../constants/app_constants.dart';
 import '../errors/exceptions.dart';
 
@@ -57,7 +59,6 @@ class DioClient {
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          _printApiResponse(response);
           return handler.next(response);
         },
         onError: (error, handler) {
@@ -79,42 +80,8 @@ class DioClient {
       ),
     );
 
-    /*
-    // Add Professional Interceptor to print cleanly (without response data payloads)
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          print('-----------------------------------------------------------');
-          print('--> REQUEST: [${options.method}] ${options.uri}');
-          if (options.headers.isNotEmpty) {
-            print('--> HEADERS:');
-            options.headers.forEach((k, v) => print('    $k: $v'));
-          }
-          // Request data printing is commented out per user request
-          // if (options.data != null) { ... }
-          print('-----------------------------------------------------------');
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-          print('-----------------------------------------------------------');
-          print('<-- RESPONSE: [${response.statusCode}] ${response.requestOptions.uri}');
-          // Response data printing is commented out per user request
-          // if (response.data != null) { ... }
-          print('-----------------------------------------------------------');
-          return handler.next(response);
-        },
-        onError: (error, handler) {
-          print('-----------------------------------------------------------');
-          print('<-- ERROR: [${error.response?.statusCode}] ${error.requestOptions.uri}');
-          print('    MESSAGE: ${error.message}');
-          // Error data printing is commented out per user request
-          // if (error.response?.data != null) { ... }
-          print('-----------------------------------------------------------');
-          return handler.next(error);
-        },
-      ),
-    );
-    */
+    // Logging Interceptor to print all requests, responses, and errors
+    _dio.interceptors.add(DioLoggingInterceptor());
 
     // Android/Release Mode Hotfix: bypass SSL issues on Dev/Staging environments
     _dio.httpClientAdapter = IOHttpClientAdapter(
@@ -127,20 +94,7 @@ class DioClient {
     );
   }
   
-  /// Common function to print all API responses.
-  /// You can comment out the print statements inside or the method call above to disable this.
-  void _printApiResponse(Response response) {
-    // print('=== API RESPONSE [${response.statusCode}] ===');
-    // print('URL: ${response.requestOptions.uri}');
-    try {
-      final encoder = const JsonEncoder.withIndent('  ');
-      final prettyString = encoder.convert(response.data);
-      // prettyString.split('\n').forEach((element) => print(element));
-    } catch (e) {
-      // print('DATA: ${response.data}');
-    }
-    // print('=============================================');
-  }
+
 
   /// Expose Dio instance for Retrofit
   Dio get dio => _dio;
@@ -159,32 +113,39 @@ class DioClient {
         
       case DioExceptionType.badResponse:
         final statusCode = error.response?.statusCode;
+        
+        String? customMessage;
+        if (error.response?.data is Map) {
+          customMessage = (error.response?.data['message'] ?? error.response?.data['error'])?.toString();
+        } else if (error.response?.data is String && (error.response?.data as String).isNotEmpty) {
+          customMessage = error.response?.data as String;
+        }
+
         if (statusCode == 401) {
           return AuthException(
-            message: ErrorMessages.sessionExpired,
+            message: customMessage ?? ErrorMessages.sessionExpired,
             code: statusCode,
           );
         } else if (statusCode == 403) {
           return AuthException(
-            message: ErrorMessages.unauthorized,
+            message: customMessage ?? ErrorMessages.unauthorized,
             code: statusCode,
           );
         } else if (statusCode != null && statusCode >= 500) {
           return ServerException(
-            message: ErrorMessages.serverError,
+            message: customMessage ?? ErrorMessages.serverError,
             code: statusCode,
           );
         } else if (statusCode == 404) {
           return ServerException(
-            message: ErrorMessages.serviceUnavailable,
+            message: customMessage ?? ErrorMessages.serviceUnavailable,
             code: statusCode,
           );
         } else if (statusCode == 400) {
           // Check for validation errors
-          
-          if (error.response?.data is Map && error.response?.data['errors'] != null) {
+          if (error.response?.data is Map && error.response?.data['errors'] is List) {
              return ValidationException(
-              message: 'Validation failed',
+              message: customMessage ?? 'Validation failed',
               code: statusCode,
               errors: (error.response?.data['errors'] as List).map((e) {
                 if (e is Map && e.containsKey('msg')) {
@@ -195,22 +156,12 @@ class DioClient {
              );
           }
           return ServerException(
-            message: error.response?.data?['message'] ?? ErrorMessages.somethingWentWrong,
+            message: customMessage ?? ErrorMessages.somethingWentWrong,
             code: statusCode,
           );
         } else {
-          // Try to extract error message from response
-          String message = ErrorMessages.somethingWentWrong;
-          if (error.response?.data is Map) {
-            message = (error.response?.data['message'] ?? 
-                      error.response?.data['error'] ?? 
-                      ErrorMessages.somethingWentWrong).toString();
-          } else if (error.response?.data is String) {
-            message = error.response?.data as String;
-          }
-          
           return ServerException(
-            message: message,
+            message: customMessage ?? ErrorMessages.somethingWentWrong,
             code: statusCode,
           );
         }
@@ -329,5 +280,93 @@ class DioClient {
     } on DioException catch (e) {
       throw handleDioError(e);
     }
+  }
+}
+
+/// Interceptor that prints all network requests, responses, and errors.
+class DioLoggingInterceptor extends Interceptor {
+  final Logger _logger = Logger(
+    printer: PrettyPrinter(
+      methodCount: 0,
+      errorMethodCount: 5,
+      lineLength: 100,
+      colors: true,
+      printEmojis: true,
+      printTime: true,
+    ),
+  );
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final buffer = StringBuffer();
+    buffer.writeln('--> REQUEST [${options.method}]');
+    buffer.writeln('URL: ${options.uri}');
+    
+    if (options.headers.isNotEmpty) {
+      buffer.writeln('Headers:');
+      options.headers.forEach((k, v) => buffer.writeln('  $k: $v'));
+    }
+    
+    if (options.queryParameters.isNotEmpty) {
+      buffer.writeln('Query Parameters:');
+      options.queryParameters.forEach((k, v) => buffer.writeln('  $k: $v'));
+    }
+    
+    if (options.data != null) {
+      buffer.writeln('Body:');
+      try {
+        final encoder = const JsonEncoder.withIndent('  ');
+        buffer.writeln(encoder.convert(options.data));
+      } catch (_) {
+        buffer.writeln(options.data.toString());
+      }
+    }
+    
+    buffer.writeln('--> END ${options.method}');
+    _logger.i(buffer.toString());
+    super.onRequest(options, handler);
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    final buffer = StringBuffer();
+    buffer.writeln('<-- RESPONSE [${response.statusCode}]');
+    buffer.writeln('URL: ${response.requestOptions.uri}');
+    
+    if (response.data != null) {
+      buffer.writeln('Body:');
+      try {
+        final encoder = const JsonEncoder.withIndent('  ');
+        buffer.writeln(encoder.convert(response.data));
+      } catch (_) {
+        buffer.writeln(response.data.toString());
+      }
+    }
+    
+    buffer.writeln('<-- END HTTP');
+    _logger.d(buffer.toString());
+    super.onResponse(response, handler);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    final buffer = StringBuffer();
+    buffer.writeln('<-- ERROR [${err.response?.statusCode}]');
+    buffer.writeln('URL: ${err.requestOptions.uri}');
+    buffer.writeln('Message: ${err.message}');
+    
+    if (err.response?.data != null) {
+      buffer.writeln('Body:');
+      try {
+        final encoder = const JsonEncoder.withIndent('  ');
+        buffer.writeln(encoder.convert(err.response?.data));
+      } catch (_) {
+        buffer.writeln(err.response?.data.toString());
+      }
+    }
+    
+    buffer.writeln('<-- END ERROR');
+    _logger.e(buffer.toString());
+    super.onError(err, handler);
   }
 }

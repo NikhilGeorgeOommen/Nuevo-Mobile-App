@@ -16,11 +16,11 @@ class SubscriptionPaywayDetails {
 
   factory SubscriptionPaywayDetails.fromJson(Map<String, dynamic> json) {
     return SubscriptionPaywayDetails(
-      paywaySchedule: json['paywaySchedule'] != null
-          ? PaywaySchedule.fromJson(json['paywaySchedule'])
+      paywaySchedule: json['paywaySchedule'] is Map<String, dynamic>
+          ? PaywaySchedule.fromJson(json['paywaySchedule'] as Map<String, dynamic>)
           : null,
-      localSubscription: json['localSubscription'] != null
-          ? LocalSubscription.fromJson(json['localSubscription'])
+      localSubscription: json['localSubscription'] is Map<String, dynamic>
+          ? LocalSubscription.fromJson(json['localSubscription'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -44,13 +44,23 @@ class PaywaySchedule {
   });
 
   factory PaywaySchedule.fromJson(Map<String, dynamic> json) {
+    num? parseNum(dynamic val) {
+      if (val is num) return val;
+      if (val is String) return num.tryParse(val);
+      return null;
+    }
+    int? parseInt(dynamic val) {
+      if (val is num) return val.toInt();
+      if (val is String) return int.tryParse(val);
+      return null;
+    }
     return PaywaySchedule(
-      frequency: json['frequency'] as String?,
-      nextPaymentDate: json['nextPaymentDate'] as String?,
-      numberOfPaymentsRemaining: json['numberOfPaymentsRemaining'] as int?,
-      nextPaymentAmount: json['nextPaymentAmount'] as num?,
-      regularPaymentAmount: json['regularPaymentAmount'] as num?,
-      finalPaymentAmount: json['finalPaymentAmount'] as num?,
+      frequency: json['frequency']?.toString(),
+      nextPaymentDate: json['nextPaymentDate']?.toString(),
+      numberOfPaymentsRemaining: parseInt(json['numberOfPaymentsRemaining']),
+      nextPaymentAmount: parseNum(json['nextPaymentAmount']),
+      regularPaymentAmount: parseNum(json['regularPaymentAmount']),
+      finalPaymentAmount: parseNum(json['finalPaymentAmount']),
     );
   }
 }
@@ -70,10 +80,10 @@ class LocalSubscription {
 
   factory LocalSubscription.fromJson(Map<String, dynamic> json) {
     return LocalSubscription(
-      id: json['id'] as String?,
-      status: json['status'] as String?,
-      startDate: json['startDate'] as String?,
-      endDate: json['endDate'] as String?,
+      id: json['id']?.toString(),
+      status: json['status']?.toString(),
+      startDate: json['startDate']?.toString(),
+      endDate: json['endDate']?.toString(),
     );
   }
 }
@@ -92,12 +102,12 @@ class PaymentCustomerDetails {
 
   factory PaymentCustomerDetails.fromJson(Map<String, dynamic> json) {
     return PaymentCustomerDetails(
-      customerNumber: json['customerNumber'] as String?,
-      paymentSetup: json['paymentSetup'] != null
-          ? PaymentSetup.fromJson(json['paymentSetup'])
+      customerNumber: json['customerNumber']?.toString(),
+      paymentSetup: json['paymentSetup'] is Map<String, dynamic>
+          ? PaymentSetup.fromJson(json['paymentSetup'] as Map<String, dynamic>)
           : null,
-      creditCard: json['creditCard'] != null
-          ? CreditCardDetails.fromJson(json['creditCard'])
+      creditCard: json['creditCard'] is Map<String, dynamic>
+          ? CreditCardDetails.fromJson(json['creditCard'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -118,13 +128,15 @@ class PaymentSetup {
 
   factory PaymentSetup.fromJson(Map<String, dynamic> json) {
     return PaymentSetup(
-      paymentMethod: json['paymentMethod'] as String?,
-      stopped: json['stopped'] as bool?,
-      creditCard: json['creditCard'] != null
-          ? CreditCardDetails.fromJson(json['creditCard'])
+      paymentMethod: json['paymentMethod']?.toString(),
+      stopped: json['stopped'] is bool 
+          ? json['stopped'] as bool 
+          : (json['stopped'] != null ? json['stopped'].toString().toLowerCase() == 'true' : null),
+      creditCard: json['creditCard'] is Map<String, dynamic>
+          ? CreditCardDetails.fromJson(json['creditCard'] as Map<String, dynamic>)
           : null,
-      merchant: json['merchant'] != null
-          ? MerchantDetails.fromJson(json['merchant'])
+      merchant: json['merchant'] is Map<String, dynamic>
+          ? MerchantDetails.fromJson(json['merchant'] as Map<String, dynamic>)
           : null,
     );
   }
@@ -155,14 +167,14 @@ class CreditCardDetails {
 
   factory CreditCardDetails.fromJson(Map<String, dynamic> json) {
     return CreditCardDetails(
-      cardNumber: json['cardNumber'] as String?,
-      expiryDateMonth: json['expiryDateMonth'] as String?,
-      expiryDateYear: json['expiryDateYear'] as String?,
-      cardScheme: json['cardScheme'] as String?,
-      cardType: json['cardType'] as String?,
-      cardholderName: json['cardholderName'] as String?,
-      panType: json['panType'] as String?,
-      maskedNumber: json['maskedNumber'] as String?,
+      cardNumber: json['cardNumber']?.toString(),
+      expiryDateMonth: json['expiryDateMonth']?.toString(),
+      expiryDateYear: json['expiryDateYear']?.toString(),
+      cardScheme: json['cardScheme']?.toString(),
+      cardType: json['cardType']?.toString(),
+      cardholderName: json['cardholderName']?.toString(),
+      panType: json['panType']?.toString(),
+      maskedNumber: json['maskedNumber']?.toString(),
     );
   }
 }
@@ -178,8 +190,8 @@ class MerchantDetails {
 
   factory MerchantDetails.fromJson(Map<String, dynamic> json) {
     return MerchantDetails(
-      merchantId: json['merchantId'] as String?,
-      merchantName: json['merchantName'] as String?,
+      merchantId: json['merchantId']?.toString(),
+      merchantName: json['merchantName']?.toString(),
     );
   }
 }
@@ -192,7 +204,7 @@ class SingleUseTokenResponse {
 
   factory SingleUseTokenResponse.fromJson(Map<String, dynamic> json) {
     return SingleUseTokenResponse(
-      singleUseTokenId: json['singleUseTokenId'] as String,
+      singleUseTokenId: json['singleUseTokenId']?.toString() ?? '',
     );
   }
 }
@@ -208,12 +220,11 @@ class SaveCardResponse {
   });
 
   factory SaveCardResponse.fromJson(Map<String, dynamic> json) {
-//    print("SaveCardResponse: $json");
     return SaveCardResponse(
-      creditCard: json['creditCard'] != null
-          ? CreditCardDetails.fromJson(json['creditCard'])
+      creditCard: json['creditCard'] is Map<String, dynamic>
+          ? CreditCardDetails.fromJson(json['creditCard'] as Map<String, dynamic>)
           : null,
-      message: json['message'] as String?,
+      message: json['message']?.toString(),
     );
   }
 }

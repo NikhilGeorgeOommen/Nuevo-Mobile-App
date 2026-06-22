@@ -9,6 +9,7 @@ import '../../../core/errors/exceptions.dart';
 class LocalDataSource {
   final FlutterSecureStorage _secureStorage;
   final SharedPreferences _preferences;
+  String? _cachedAccessToken;
   
   LocalDataSource({
     required FlutterSecureStorage secureStorage,
@@ -22,6 +23,7 @@ class LocalDataSource {
   
   /// Save access token (SECURE)
   Future<void> saveAccessToken(String token) async {
+    _cachedAccessToken = token;
     try {
       await _secureStorage.write(
         key: StorageKeys.accessToken,
@@ -37,8 +39,13 @@ class LocalDataSource {
   
   /// Get access token (SECURE)
   Future<String?> getAccessToken() async {
+    if (_cachedAccessToken != null) {
+      return _cachedAccessToken;
+    }
     try {
-      return await _secureStorage.read(key: StorageKeys.accessToken);
+      final token = await _secureStorage.read(key: StorageKeys.accessToken);
+      _cachedAccessToken = token;
+      return token;
     } catch (e) {
       throw CacheException(
         message: 'Failed to retrieve access token',
@@ -103,6 +110,7 @@ class LocalDataSource {
   
   /// Clear all secure data (on logout)
   Future<void> clearSecureData() async {
+    _cachedAccessToken = null;
     try {
       await _secureStorage.deleteAll();
     } catch (e) {

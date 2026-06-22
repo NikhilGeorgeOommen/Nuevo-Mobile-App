@@ -100,19 +100,19 @@ class GetTaskByIdUseCase implements UseCase<PatientTaskModel, TaskIdParams> {
       repository.getTaskById(params.taskId);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MarkTaskCompletedUseCase
-// ─────────────────────────────────────────────────────────────────────────────
-
-class MarkTaskCompletedUseCase
-    implements UseCase<PatientTaskModel, TaskIdParams> {
-  final PhaseRepository repository;
-  MarkTaskCompletedUseCase(this.repository);
-
-  @override
-  Future<Either<Failure, PatientTaskModel>> call(TaskIdParams params) =>
-      repository.markTaskCompleted(params.taskId);
-}
+// // ─────────────────────────────────────────────────────────────────────────────
+// // MarkTaskCompletedUseCase
+// // ─────────────────────────────────────────────────────────────────────────────
+//
+// class MarkTaskCompletedUseCase
+//     implements UseCase<PatientTaskModel, TaskIdParams> {
+//   final PhaseRepository repository;
+//   MarkTaskCompletedUseCase(this.repository);
+//
+//   @override
+//   Future<Either<Failure, PatientTaskModel>> call(TaskIdParams params) =>
+//       repository.markTaskCompleted(params.taskId);
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // UpdateTaskStatusUseCase

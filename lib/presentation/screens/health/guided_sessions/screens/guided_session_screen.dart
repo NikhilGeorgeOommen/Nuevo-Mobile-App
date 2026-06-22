@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:async';
 import 'package:video_player/video_player.dart';
-import '../../../../../core/theme/app_theme.dart';
 import '../../../../widgets/health/session_completed_sheet.dart';
 import '../../../../widgets/health/session_paused_sheet.dart';
 import '../../../../../data/models/daily_exercise_model.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../providers/health_provider.dart';
-import '../../../../../data/models/active_progress_model.dart';
+import 'dart:ui';
+import 'package:flutter/services.dart';
 import '../../../../../core/constants/app_strings.dart';
+import '../../../../../core/theme/app_theme.dart';
 
 class GuidedSessionScreen extends ConsumerStatefulWidget {
   final List<ExerciseStepModel>? steps;
@@ -232,6 +233,8 @@ class _GuidedSessionScreenState extends ConsumerState<GuidedSessionScreen> {
   void _nextStep() {
     if (_isTransitioning) return;
     
+    HapticFeedback.mediumImpact(); // Haptic feedback on step finish
+    
     if (_currentStep < _sessionSteps.length - 1) {
       _isTransitioning = true;
       _resetTimerForCurrentStep();
@@ -439,444 +442,307 @@ class _GuidedSessionScreenState extends ConsumerState<GuidedSessionScreen> {
     final currentStepData = _sessionSteps[_currentStep];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF5D4037)),
-          onPressed: () => context.pop(),
-        ),
-        title: const Text(
-          AppStrings.guidedSession,
-          style: TextStyle(
-            color: Color(0xFF5D4037),
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+              onPressed: () => context.pop(),
+            ),
           ),
         ),
+        title: _isSessionStarted 
+            ? ValueListenableBuilder<int>(
+                valueListenable: _elapsedTimeNotifier,
+                builder: (context, elapsed, child) {
+                  final remaining = (_currentStepDuration - elapsed).clamp(0, _currentStepDuration);
+                  return Text(
+                    _formatDuration(remaining),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  );
+                },
+              )
+            : const Text(
+                AppStrings.guidedSession,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Segmented Progress Bar
+        actions: [
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 20.0,
-              vertical: 12.0,
+            padding: const EdgeInsets.only(right: 16.0),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isMuted = !_isMuted;
+                });
+                HapticFeedback.selectionClick();
+              },
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _isMuted ? Icons.volume_off : Icons.volume_up,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
             ),
-            child: Row(
-              children: List.generate(
-                _sessionSteps.length,
-                (index) => Expanded(
-                  child: Container(
-                    height: 6,
-                    margin: const EdgeInsets.symmetric(horizontal: 3.0),
-                    decoration: BoxDecoration(
-                      color: index <= _currentStep
-                          ? const Color(0xFFA35940) // Active color
-                          : const Color(0xFFEEEAE7), // Inactive color
-                      borderRadius: BorderRadius.circular(3),
-                    ),
+          ),
+        ],
+      ),
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          // 1. Ambient Blurred Background
+          Positioned.fill(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 500),
+              child: Container(
+                key: ValueKey(_currentStep),
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(currentStepData['poster'] ?? currentStepData['image'] ?? ''),
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
             ),
           ),
-
-          const SizedBox(height: 10), // gap: 10px
-
-          // Main Visual / PageView
-          AspectRatio(
-            aspectRatio: 337 / 335,
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: _onStepChanged,
-              itemCount: _sessionSteps.length,
-              itemBuilder: (context, index) {
-                final step = _sessionSteps[index];
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.black,
-                      boxShadow: [
-                        BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 5),
-                            ),
-                          ],
-                        ),
-                        child: Stack(
-                          children: [
-                            // Media Background
-                            Positioned.fill(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: _StepMediaWidget(
-                                  url: step['image'],
-                                  posterUrl: step['poster'],
-                                  isVideo: step['isVideo'] ?? false,
-                                  isPlaying: _isPlaying && index == _currentStep,
-                                  isMuted: _isMuted,
-                                  positionNotifier: index == _currentStep ? _videoPositionNotifier : null,
-                                  replayCount: index == _currentStep ? _replayCount : 0,
-                                  initialPosition: index == _currentStep && _isSessionStarted && !_isPlaying 
-                                      ? _elapsedTimeNotifier.value 
-                                      : 0,
-                                ),
-                              ),
-                            ),
-
-                        // Gradient Overlay
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                Colors.black.withOpacity(0.1),
-                                Colors.transparent,
-                                Colors.black.withOpacity(0.6),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        // Sound Toggle
-                        Positioned(
-                          top: 16,
-                          right: 16,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _isMuted = !_isMuted;
-                              });
-                            },
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.25),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                _isMuted ? Icons.volume_off : Icons.volume_up,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // Timer / Pause Overlay
-                        if (_isSessionStarted && index == _currentStep)
-                          if (!_isPlaying)
-                            Positioned.fill(
-                              child: Container(
-                                color: Colors.black.withOpacity(0.5),
-                                child: Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          _buildCircleButton(
-                                            icon: Icons.skip_previous_rounded,
-                                            onTap: () {
-                                              if (_currentStep > 0) {
-                                                _syncProgress();
-                                                _pageController.previousPage(
-                                                  duration: const Duration(milliseconds: 300),
-                                                  curve: Curves.easeInOut,
-                                                );
-                                              }
-                                            },
-                                            size: 64,
-                                            iconColor: Colors.white,
-                                            backgroundColor: Colors.white.withOpacity(0.3),
-                                          ),
-                                          const SizedBox(width: 32),
-                                          _buildCircleButton(
-                                            icon: Icons.replay_rounded,
-                                            onTap: _replayCurrentStep,
-                                            size: 64,
-                                            iconColor: Colors.white,
-                                            backgroundColor: Colors.white.withOpacity(0.3),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 32),
-                                      ValueListenableBuilder<int>(
-                                        valueListenable: _elapsedTimeNotifier,
-                                        builder: (context, elapsed, child) {
-                                          final remaining = (_currentStepDuration - elapsed).clamp(0, _currentStepDuration);
-                                          return Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              const Text(
-                                                AppStrings.timeRemaining,
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                  letterSpacing: 1.0,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                _formatDuration(remaining),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 48,
-                                                  fontWeight: FontWeight.w300,
-                                                ),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            )
-                          else
-                            Positioned(
-                              bottom: 24, // Align closer to bottom
-                              left: 0,
-                              right: 0,
-                              child: ValueListenableBuilder<int>(
-                                valueListenable: _elapsedTimeNotifier,
-                                builder: (context, elapsed, child) {
-                                  final remaining = (_currentStepDuration - elapsed).clamp(0, _currentStepDuration);
-                                  return Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Text(
-                                        AppStrings.timeRemaining,
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          letterSpacing: 1.0,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _formatDuration(remaining),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 48,
-                                          fontWeight: FontWeight.w300,
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-
-                      ],
-                    ),
-                  ),
-                );
-              },
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+              child: Container(
+                color: AppColors.primaryDark.withValues(alpha: 0.6), // Dim to ensure text readability
+              ),
             ),
           ),
 
-          const SizedBox(height: 24),
-
-          // Instruction Card
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.symmetric(horizontal: 20.0),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFAF1ED),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Vertical colored bar
-                  Container(
-                    width: 6,
-                    color: const Color(0xFFA35940),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: ValueListenableBuilder<int>(
-                        valueListenable: currentStepData['isVideo'] ? _videoPositionNotifier : _elapsedTimeNotifier,
-                        builder: (context, elapsed, child) {
-                          final activeSubtitle = _getCurrentSubtitleData(currentStepData, elapsed);
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                activeSubtitle['title']!,
-                                style: const TextStyle(
-                                  color: Color(0xFF5D4037),
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                              if (activeSubtitle['description']!.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                Container(
-                                  height: 1,
-                                  color: const Color(0xFFE0D6D1),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  activeSubtitle['description']!,
-                                  style: const TextStyle(
-                                    color: Color(0xFF5D4037),
-                                    fontSize: 16,
-                                    height: 1.5,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          );
-                        }
+          // 2. Foreground Content
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                // Top Progress Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
+                  child: Row(
+                    children: List.generate(
+                      _sessionSteps.length,
+                      (index) => Expanded(
+                        child: Container(
+                          height: 4,
+                          margin: const EdgeInsets.symmetric(horizontal: 2.0),
+                          decoration: BoxDecoration(
+                            color: index <= _currentStep
+                                ? AppColors.primaryButtonColor
+                                : Colors.white.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
+                ),
 
-          const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
-          // Playback Controls
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Previous
-                Visibility(
-                  visible: _currentStep > 0,
-                  maintainSize: true,
-                  maintainAnimation: true,
-                  maintainState: true,
-                  child: _buildCircleButton(
-                    icon: Icons.skip_previous_rounded,
-                    onTap: () {
-                      if (_currentStep > 0) {
-                        _syncProgress();
-                        _pageController.previousPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      }
-                    },
-                    size: 56,
-                    iconColor: const Color(0xFF5D4037),
-                    backgroundColor: const Color(0xFFFAF1ED),
+                // Video Area
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: PageView.builder(
+                          controller: _pageController,
+                          onPageChanged: _onStepChanged,
+                          itemCount: _sessionSteps.length,
+                          physics: const NeverScrollableScrollPhysics(), // Only navigate via next/prev buttons
+                          itemBuilder: (context, index) {
+                            final step = _sessionSteps[index];
+                            return _StepMediaWidget(
+                              url: step['image'],
+                              posterUrl: step['poster'],
+                              isVideo: step['isVideo'] ?? false,
+                              isPlaying: _isPlaying && index == _currentStep,
+                              isMuted: _isMuted,
+                              positionNotifier: index == _currentStep ? _videoPositionNotifier : null,
+                              replayCount: index == _currentStep ? _replayCount : 0,
+                              initialPosition: index == _currentStep && _isSessionStarted && !_isPlaying 
+                                  ? _elapsedTimeNotifier.value 
+                                  : 0,
+                            );
+                          },
+                        ),
+                      ),
+                    ]
                   ),
                 ),
 
-                // Play/Pause
-                _buildCircleButton(
-                  icon: _isPlaying
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
-                  onTap: _onPlayPauseTapped,
-                  size: 88,
-                  iconColor: Colors.white,
-                  backgroundColor: const Color(0xFFA35940),
-                  hasShadow: true,
-                  border: Border.all(color: const Color(0xFFFAF1ED), width: 4),
-                ),
-
-                // Next
-                Visibility(
-                  visible: _currentStep < _sessionSteps.length - 1,
-                  maintainSize: true,
-                  maintainAnimation: true,
-                  maintainState: true,
-                  child: _buildCircleButton(
-                    icon: Icons.skip_next_rounded,
-                    onTap: () {
-                      _syncProgress();
-                      _nextStep();
-                    },
-                    size: 56,
-                    iconColor: const Color(0xFF5D4037),
-                    backgroundColor: const Color(0xFFFAF1ED),
+                // 3. Unified Bottom Controls
+                SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryDark.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: AppColors.primaryButtonColor.withValues(alpha: 0.3)),
+                          ),
+                          child: ValueListenableBuilder<int>(
+                            valueListenable: currentStepData['isVideo'] ? _videoPositionNotifier : _elapsedTimeNotifier,
+                            builder: (context, elapsed, child) {
+                              final activeSubtitle = _getCurrentSubtitleData(currentStepData, elapsed);
+                              return Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Row 1: Instruction Text & End Session
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              activeSubtitle['title']!,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                            if (activeSubtitle['description']!.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                activeSubtitle['description']!,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: Colors.white.withValues(alpha: 0.7),
+                                                  fontSize: 14,
+                                                  height: 1.4,
+                                                ),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  
+                                  // Row 2: Playback Controls
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Skip Previous
+                                      _buildCircleButton(
+                                        icon: Icons.skip_previous_rounded,
+                                        onTap: () {
+                                          if (_currentStep > 0) {
+                                            HapticFeedback.selectionClick();
+                                            _syncProgress();
+                                            _pageController.previousPage(
+                                              duration: const Duration(milliseconds: 300),
+                                              curve: Curves.easeInOut,
+                                            );
+                                          }
+                                        },
+                                        size: 48,
+                                        iconColor: _currentStep > 0 ? Colors.white : Colors.white.withValues(alpha: 0.3),
+                                        backgroundColor: Colors.transparent,
+                                      ),
+                                      const SizedBox(width: 24),
+                                      
+                                      // Replay (when paused)
+                                      if (!_isPlaying) ...[
+                                        _buildCircleButton(
+                                          icon: Icons.replay_rounded,
+                                          onTap: () {
+                                            HapticFeedback.selectionClick();
+                                            _replayCurrentStep();
+                                          },
+                                          size: 48,
+                                          iconColor: Colors.white,
+                                          backgroundColor: Colors.transparent,
+                                        ),
+                                        const SizedBox(width: 24),
+                                      ],
+                                      
+                                      // Play/Pause
+                                      _buildCircleButton(
+                                        icon: _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                        onTap: () {
+                                           HapticFeedback.lightImpact();
+                                           _onPlayPauseTapped();
+                                        },
+                                        size: 64,
+                                        iconColor: Colors.white,
+                                        backgroundColor: AppColors.primaryButtonColor,
+                                        hasShadow: true,
+                                      ),
+                                      const SizedBox(width: 24),
+                                      
+                                      // Skip Next
+                                      _buildCircleButton(
+                                        icon: Icons.skip_next_rounded,
+                                        onTap: () {
+                                          if (_currentStep < _sessionSteps.length - 1) {
+                                            HapticFeedback.selectionClick();
+                                            _syncProgress();
+                                            _nextStep();
+                                          }
+                                        },
+                                        size: 48,
+                                        iconColor: _currentStep < _sessionSteps.length - 1 ? Colors.white : Colors.white.withValues(alpha: 0.3),
+                                        backgroundColor: Colors.transparent,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              );
+                            }
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 32),
-
-          // End Session Button
-          if (_isSessionStarted)
-            Padding(
-              padding: const EdgeInsets.only(
-                left: 20.0,
-                right: 20.0,
-                bottom: 32.0,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: OutlinedButton(
-                  onPressed: _isCompletingSession ? null : _endSession,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(
-                        color: _isCompletingSession
-                            ? Colors.grey
-                            : const Color(0xFFA35940)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    backgroundColor: const Color(0xFFFAF1ED),
-                  ),
-                  child: _isCompletingSession
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
-                            color: Color(0xFFA35940),
-                            strokeWidth: 2,
-                          ),
-                        )
-                      : const Text(
-                          AppStrings.endSession,
-                          style: TextStyle(
-                            color: Color(0xFFA35940),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                ),
-              ),
-            ),
-          if (!_isSessionStarted)
-            const SizedBox(
-              height: 88,
-            ), // Placeholder for when the button is hidden to avoid UI jumping
         ],
       ),
-    ),
-  ),
-);
+    );
   }
 
   Widget _buildCircleButton({
@@ -900,7 +766,7 @@ class _GuidedSessionScreenState extends ConsumerState<GuidedSessionScreen> {
           boxShadow: hasShadow
               ? [
                   BoxShadow(
-                    color: const Color(0xFFA35940).withOpacity(0.2),
+                    color: const Color(0xFFA35940).withValues(alpha: 0.2),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -924,7 +790,6 @@ class _StepMediaWidget extends StatefulWidget {
   final int initialPosition;
 
   const _StepMediaWidget({
-    Key? key,
     required this.url,
     this.posterUrl,
     required this.isVideo,
@@ -933,7 +798,7 @@ class _StepMediaWidget extends StatefulWidget {
     this.positionNotifier,
     this.replayCount = 0,
     this.initialPosition = 0,
-  }) : super(key: key);
+  });
 
   @override
   State<_StepMediaWidget> createState() => _StepMediaWidgetState();
@@ -1043,7 +908,7 @@ class _StepMediaWidgetState extends State<_StepMediaWidget> {
     if (!widget.isVideo) {
       return Image.network(
         widget.url,
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => Container(
           color: Colors.grey[300],
           child: const Center(
@@ -1080,7 +945,7 @@ class _StepMediaWidgetState extends State<_StepMediaWidget> {
                 image: DecorationImage(
                   image: NetworkImage(widget.posterUrl!),
                   fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(Colors.black.withOpacity(0.5), BlendMode.darken),
+                  colorFilter: ColorFilter.mode(Colors.black.withValues(alpha: 0.5), BlendMode.darken),
                 ),
               )
             : const BoxDecoration(color: Colors.black),
@@ -1092,7 +957,7 @@ class _StepMediaWidgetState extends State<_StepMediaWidget> {
 
     return SizedBox.expand(
       child: FittedBox(
-        fit: BoxFit.cover,
+        fit: BoxFit.contain,
         child: SizedBox(
           width: _videoController!.value.size.width,
           height: _videoController!.value.size.height,

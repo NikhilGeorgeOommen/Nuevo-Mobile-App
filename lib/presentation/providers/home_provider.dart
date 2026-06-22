@@ -23,13 +23,6 @@ final getHomeDashboardUseCaseProvider = Provider<GetHomeDashboardUseCase>((ref) 
 
 /// Home Dashboard Provider
 final homeDashboardProvider = FutureProvider<HomeDashboard>((ref) async {
-  // Clear cache if user logs out to avoid showing previous user's data
-  ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.status == AuthStatus.unauthenticated) {
-      ref.invalidateSelf();
-    }
-  });
-
   final getHomeDashboard = ref.watch(getHomeDashboardUseCaseProvider);
   final result = await getHomeDashboard(const NoParams());
   

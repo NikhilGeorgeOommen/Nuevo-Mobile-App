@@ -154,29 +154,29 @@ class ActivePhaseTaskNotifier
     );
   }
 
-  Future<bool> markCompleted(String taskId) async {
-    final useCase = _ref.read(markTaskCompletedUseCaseProvider);
-    final result = await useCase(TaskIdParams(taskId));
+  // Future<bool> markCompleted(String taskId) async {
+  //   final useCase = _ref.read(markTaskCompletedUseCaseProvider);
+  //   final result = await useCase(TaskIdParams(taskId));
+  //
+  //   return result.fold(
+  //     (failure) => false,
+  //     (data) {
+  //       state = AsyncValue.data(data);
+  //       return true;
+  //     },
+  //   );
+  // }
 
-    return result.fold(
-      (failure) => false,
-      (data) {
-        state = AsyncValue.data(data);
-        return true;
-      },
-    );
-  }
-
-  Future<bool> updateStatus(String taskId, String statusValue) async {
+  Future<String?> updateStatus(String taskId, String statusValue) async {
     final useCase = _ref.read(updateTaskStatusUseCaseProvider);
     final result = await useCase(
         UpdateTaskStatusParams(taskId: taskId, statusValue: statusValue));
 
     return result.fold(
-      (failure) => false,
+      (failure) => failure.message,
       (data) {
         state = AsyncValue.data(data);
-        return true;
+        return null;
       },
     );
   }

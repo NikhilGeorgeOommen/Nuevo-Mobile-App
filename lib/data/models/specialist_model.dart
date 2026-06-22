@@ -14,30 +14,39 @@ class SpecialistModel extends Specialist {
   });
 
   factory SpecialistModel.fromJson(Map<String, dynamic> json) {
-    
-    final roleMap = json['role'] as Map<String, dynamic>?;
+    final roleVal = json['role'];
+    String roleName = '';
+    if (roleVal is Map) {
+      roleName = roleVal['name']?.toString() ?? '';
+    } else if (roleVal != null) {
+      roleName = roleVal.toString();
+    }
+
+    List<String>? parseStringList(dynamic listVal) {
+      if (listVal is List) {
+        return listVal.map((e) => e?.toString() ?? '').where((s) => s.isNotEmpty).toList();
+      }
+      return null;
+    }
+
+    int? parseToInt(dynamic val) {
+      if (val is num) return val.toInt();
+      if (val is String) return int.tryParse(val);
+      return null;
+    }
+
     return SpecialistModel(
-      id: json['id'] as String? ?? '',
-      fullName: json['fullName'] as String? ?? '',
-      role: roleMap?['name'] as String? ?? '',
-      profileImage: json['profileImage'] as String?,
-      biography: json['biography'] as String?,
-
-      specialties: (json['specialties'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-
-      qualifications: (json['qualifications'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-
-      yearsOfExperience: json['yearsOfExperience'] as int?,
-
-      languagesSpoken: (json['languagesSpoken'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList(),
-  );
-}
+      id: json['id']?.toString() ?? '',
+      fullName: json['fullName']?.toString() ?? '',
+      role: roleName,
+      profileImage: json['profileImage']?.toString(),
+      biography: json['biography']?.toString(),
+      specialties: parseStringList(json['specialties']),
+      qualifications: parseStringList(json['qualifications']),
+      yearsOfExperience: parseToInt(json['yearsOfExperience']),
+      languagesSpoken: parseStringList(json['languagesSpoken']),
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {

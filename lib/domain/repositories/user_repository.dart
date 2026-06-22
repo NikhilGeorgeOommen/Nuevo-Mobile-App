@@ -17,6 +17,8 @@ abstract class UserRepository {
     String? phoneNumber,
     String? profileImageUrl,
     String? dateOfBirth,
+    double? height,
+    double? weight,
   });
 
   /// Update user preferences (Notification & Consent)

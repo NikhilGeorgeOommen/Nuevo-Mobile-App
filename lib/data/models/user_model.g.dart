@@ -21,6 +21,8 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) => UserModel(
         ),
   createdAt: json['created_at'] as String?,
   lastLoginAt: json['last_login_at'] as String?,
+  height: (json['height'] as num?)?.toDouble(),
+  weight: (json['weight'] as num?)?.toDouble(),
 );
 
 Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
@@ -34,4 +36,6 @@ Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
   'subscription': instance.subscription,
   'created_at': instance.createdAt,
   'last_login_at': instance.lastLoginAt,
+  'height': instance.height,
+  'weight': instance.weight,
 };

@@ -115,8 +115,8 @@ class AppStrings {
   static const String nextAvailable = 'Next Available';
   static const String viewAppointments = 'View Appointments';
   static const String cardiologist = 'Cardiologist'; // Example role
-  static const String drSarah = 'Dr. Sarah Bennett'; // Example name
-  static const String aboutDrSarah = 'Dr. Sarah specialises in personalised nutrition strategies that support long-term health and sustainable lifestyle changes.'; // Example bio
+  static const String drSarah = 'Dr. '; // Example name
+  static const String aboutDrSarah = 'Dr. specialises in personalised nutrition strategies that support long-term health and sustainable lifestyle changes.'; // Example bio
 
   // Notification Settings
   static const String notifications = 'Notifications';

@@ -38,24 +38,27 @@ class HomeDashboardModel extends HomeDashboard {
       quickStats: data['quickStats'] is Map<String, dynamic>
           ? QuickStatsModel.fromJson(data['quickStats'] as Map<String, dynamic>)
           : const QuickStatsModel(),
-      actionRequired: (data['actionRequired'] as List<dynamic>?)
-              ?.where((e) => e is Map<String, dynamic>)
-              .map((e) => _parseTask(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      tasksCompleted: (data['tasksCompleted'] as List<dynamic>?)
-              ?.where((e) => e is Map<String, dynamic>)
-              .map((e) => _parseTask(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      actionRequired: data['actionRequired'] is List
+          ? (data['actionRequired'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((e) => _parseTask(e))
+              .toList()
+          : [],
+      tasksCompleted: data['tasksCompleted'] is List
+          ? (data['tasksCompleted'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((e) => _parseTask(e))
+              .toList()
+          : [],
       yourProgram: data['yourProgram'] is Map<String, dynamic>
           ? WellnessProgramModel.fromJson(data['yourProgram'] as Map<String, dynamic>).toEntity()
           : null,
-      quickAccess: (data['quickAccess'] as List<dynamic>?)
-              ?.where((e) => e is Map<String, dynamic>)
-              .map((e) => HomeQuickAccessItemModel.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+      quickAccess: data['quickAccess'] is List
+          ? (data['quickAccess'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((e) => HomeQuickAccessItemModel.fromJson(e))
+              .toList()
+          : [],
     );
   }
 

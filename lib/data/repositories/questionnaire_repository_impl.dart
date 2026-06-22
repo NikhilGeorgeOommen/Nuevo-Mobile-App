@@ -16,12 +16,20 @@ class QuestionnaireRepositoryImpl implements QuestionnaireRepository {
     try {
       final response = await _apiClient.getQuestionnaire(id);
       if (response.success && response.data != null) {
-        return Right(Questionnaire.fromJson(response.data as Map<String, dynamic>));
+        if (response.data is Map) {
+          try {
+            final mapData = Map<String, dynamic>.from(response.data as Map);
+            return Right(Questionnaire.fromJson(mapData));
+          } catch (e) {
+            return Left(ServerFailure('Failed to parse questionnaire: $e'));
+          }
+        }
+        return Left(ServerFailure('Invalid questionnaire data format'));
       } else {
-        return Left(ServerFailure( response.message ?? 'Failed to parse questionnaire json'));
+        return Left(ServerFailure(response.message ?? 'Failed to parse questionnaire json'));
       }
     } on DioException catch (e) {
-      return Left(ServerFailure( e.message ?? 'Failed to fetch questionnaire'));
+      return Left(ServerFailure(e.message ?? 'Failed to fetch questionnaire'));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }

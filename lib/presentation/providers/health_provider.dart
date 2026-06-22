@@ -24,11 +24,6 @@ final healthRepositoryProvider = Provider<HealthRepository>((ref) {
 
 // FutureProvider for Today's Exercise
 final todayExerciseProvider = FutureProvider<DailyExerciseModel?>((ref) async {
-  ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.status == AuthStatus.unauthenticated) {
-      ref.invalidateSelf();
-    }
-  });
   final repository = ref.watch(healthRepositoryProvider);
   final result = await repository.getTodayExercise();
   
@@ -40,11 +35,6 @@ final todayExerciseProvider = FutureProvider<DailyExerciseModel?>((ref) async {
 
 // FutureProvider for Weekly Schedule
 final weeklyScheduleProvider = FutureProvider<WeeklyScheduleModel?>((ref) async {
-  ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.status == AuthStatus.unauthenticated) {
-      ref.invalidateSelf();
-    }
-  });
   final repository = ref.watch(healthRepositoryProvider);
   final result = await repository.getWeeklySchedule();
   
@@ -56,11 +46,6 @@ final weeklyScheduleProvider = FutureProvider<WeeklyScheduleModel?>((ref) async 
 
 // FutureProvider.family for Session Details
 final sessionDetailsProvider = FutureProvider.family<GuidedSessionModel?, String>((ref, id) async {
-  ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.status == AuthStatus.unauthenticated) {
-      ref.invalidateSelf();
-    }
-  });
   final repository = ref.watch(healthRepositoryProvider);
   final result = await repository.getSessionDetails(id);
   
@@ -119,11 +104,6 @@ final activeProgressProvider = FutureProvider.autoDispose<ActiveProgressModel?>(
 // FutureProvider.family for Lab Report Details / Comparison
 // We return LabReportDetailData so we have access to .parameters and .comparison
 final labReportDetailsProvider = FutureProvider.family<LabReportDetailData?, String>((ref, id) async {
-  ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.status == AuthStatus.unauthenticated) {
-      ref.invalidateSelf();
-    }
-  });
   final repository = ref.watch(healthRepositoryProvider);
   final result = await repository.getLabReportDetails(id);
   
@@ -135,11 +115,6 @@ final labReportDetailsProvider = FutureProvider.family<LabReportDetailData?, Str
 
 // FutureProvider.family for creating Lab Requests
 final createLabRequestProvider = FutureProvider.family<LabRequestData?, String>((ref, notes) async {
-  ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.status == AuthStatus.unauthenticated) {
-      ref.invalidateSelf();
-    }
-  });
   final repository = ref.watch(healthRepositoryProvider);
   final result = await repository.createLabRequest(notes);
   
@@ -151,11 +126,6 @@ final createLabRequestProvider = FutureProvider.family<LabRequestData?, String>(
 
 // FutureProvider.family for Patient Habit History
 final patientHabitHistoryProvider = FutureProvider.family<PatientHabitHistory?, String>((ref, date) async {
-  ref.listen<AuthState>(authProvider, (previous, next) {
-    if (next.status == AuthStatus.unauthenticated) {
-      ref.invalidateSelf();
-    }
-  });
   final repository = ref.watch(healthRepositoryProvider);
   final result = await repository.getPatientHabitHistory(date);
   

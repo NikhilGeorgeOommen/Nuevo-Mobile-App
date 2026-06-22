@@ -65,6 +65,8 @@ class HomeScreen extends ConsumerWidget {
     final activePhaseState = ref.watch(activePhaseProvider);
     final isHomeAndProfileLoaded = userState.valueOrNull != null && dashboardState.valueOrNull != null;
     
+    // Only fetch when home is first loaded (profile + dashboard ready) and not yet fetched.
+    // Sub-screens are responsible for calling fetchActivePhase() after task completion.
     if (isHomeAndProfileLoaded && 
         activePhaseState.valueOrNull == null && 
         !ref.read(activePhaseProvider.notifier).hasInitiatedFetch && 
@@ -513,7 +515,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _showAppointmentStatusDialog(BuildContext context, WidgetRef ref, PatientTaskModel pTask, List<String> options) {
+  void _showTaskStatusDialog(BuildContext context, WidgetRef ref, PatientTaskModel pTask, List<String> options) {
     final title = pTask.taskName.isNotEmpty ? pTask.taskName : (pTask.phaseTask?.title ?? 'Update Status');
     String selectedOption = options.first;
 
@@ -577,15 +579,16 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     );
                     
-                    final success = await ref.read(activePhaseTaskProvider.notifier).updateStatus(pTask.id, selectedOption);
+                    final error = await ref.read(activePhaseTaskProvider.notifier).updateStatus(pTask.id, selectedOption);
                     
                     rootNavigator.pop(); // securely dismiss loader
                     
-                    if (success) {
+                    if (error == null) {
                       ref.read(activePhaseProvider.notifier).fetchActivePhase();
+                      ref.refresh(homeDashboardProvider.future);
                       messenger.showSnackBar(const SnackBar(content: Text('Status updated successfully')));
                     } else {
-                      messenger.showSnackBar(const SnackBar(content: Text('Failed to update status')));
+                      messenger.showSnackBar(SnackBar(content: Text(error)));
                     }
                   },
                   child: const Text('Confirm', style: TextStyle(color: Colors.white)),
@@ -614,8 +617,15 @@ class HomeScreen extends ConsumerWidget {
             task: mappedTask,
             onTap: mappedTask.isCompleted ? null : () async {
               final type = (pTask.taskType.isNotEmpty ? pTask.taskType : (pTask.phaseTask?.taskType ?? '')).toUpperCase();
+              final options = pTask.statusOptions.isNotEmpty ? pTask.statusOptions : (pTask.phaseTask?.statusOptions ?? []);
+              final isBooleanOptions = options.isNotEmpty && options.every((o) => ['yes', 'no', 'true', 'false'].contains(o.toLowerCase()));
               
               if (type == 'QUESTIONNAIRE') {
+                if (isBooleanOptions) {
+                  _showTaskStatusDialog(context, ref, pTask, options);
+                  return;
+                }
+                
                 final rootNavigator = Navigator.of(context, rootNavigator: true);
                 final messenger = ScaffoldMessenger.of(context);
                 
@@ -662,17 +672,20 @@ class HomeScreen extends ConsumerWidget {
                   );
                 }
               } else if (type == 'APPOINTMENT') {
-                final options = pTask.statusOptions.isNotEmpty ? pTask.statusOptions : (pTask.phaseTask?.statusOptions ?? []);
                 if (options.isNotEmpty) {
-                  _showAppointmentStatusDialog(context, ref, pTask, options);
+                  _showTaskStatusDialog(context, ref, pTask, options);
                 } else {
                   context.push('/connecting-session');
                 }
               } else {
-                await context.push('/task/${pTask.id}');
-                if (context.mounted) {
-                  ref.read(activePhaseProvider.notifier).fetchActivePhase();
-                  ref.refresh(homeDashboardProvider.future);
+                if (isBooleanOptions) {
+                  _showTaskStatusDialog(context, ref, pTask, options);
+                } else {
+                  await context.push('/task/${pTask.id}');
+                  if (context.mounted) {
+                    ref.read(activePhaseProvider.notifier).fetchActivePhase();
+                    ref.refresh(homeDashboardProvider.future);
+                  }
                 }
               }
             },

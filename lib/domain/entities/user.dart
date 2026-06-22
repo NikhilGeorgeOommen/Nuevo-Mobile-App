@@ -13,6 +13,8 @@ class User extends Equatable {
   final Subscription? subscription;
   final DateTime? createdAt;
   final DateTime? lastLoginAt;
+  final double? height;
+  final double? weight;
   
   const User({
     required this.id,
@@ -24,6 +26,8 @@ class User extends Equatable {
     this.subscription,
     this.createdAt,
     this.lastLoginAt,
+    this.height,
+    this.weight,
   });
   
   /// Check if user has an active subscription
@@ -54,6 +58,8 @@ class User extends Equatable {
     Subscription? subscription,
     DateTime? createdAt,
     DateTime? lastLoginAt,
+    double? height,
+    double? weight,
   }) {
     return User(
       id: id ?? this.id,
@@ -65,6 +71,8 @@ class User extends Equatable {
       subscription: subscription ?? this.subscription,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      height: height ?? this.height,
+      weight: weight ?? this.weight,
     );
   }
   
@@ -79,6 +87,8 @@ class User extends Equatable {
     subscription,
     createdAt,
     lastLoginAt,
+    height,
+    weight,
   ];
   
   @override

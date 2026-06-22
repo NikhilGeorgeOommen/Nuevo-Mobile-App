@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../presentation/utils/responsive_utils.dart';
 import '../providers/home_provider.dart';
+import '../providers/auth_provider.dart';
+import '../providers/auth_state.dart';
 
 /// Main Shell with Bottom Navigation
 /// Wraps all main app screens with persistent bottom navigation bar
@@ -19,6 +21,14 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    if (authState.status != AuthStatus.authenticated) {
+      return const Scaffold(
+        backgroundColor: Color(0xFFFDF9F8),
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     bool disableTabs = false;
     
     final dashboardState = ref.watch(homeDashboardProvider);

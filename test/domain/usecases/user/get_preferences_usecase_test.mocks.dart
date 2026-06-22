@@ -58,6 +58,8 @@ class MockUserRepository extends _i1.Mock implements _i3.UserRepository {
     String? phoneNumber,
     String? profileImageUrl,
     String? dateOfBirth,
+    double? height,
+    double? weight,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#updateProfile, [], {
@@ -65,6 +67,8 @@ class MockUserRepository extends _i1.Mock implements _i3.UserRepository {
               #phoneNumber: phoneNumber,
               #profileImageUrl: profileImageUrl,
               #dateOfBirth: dateOfBirth,
+              #height: height,
+              #weight: weight,
             }),
             returnValue: _i4.Future<_i2.Either<_i5.Failure, _i6.User>>.value(
               _FakeEither_0<_i5.Failure, _i6.User>(
@@ -74,6 +78,8 @@ class MockUserRepository extends _i1.Mock implements _i3.UserRepository {
                   #phoneNumber: phoneNumber,
                   #profileImageUrl: profileImageUrl,
                   #dateOfBirth: dateOfBirth,
+                  #height: height,
+                  #weight: weight,
                 }),
               ),
             ),

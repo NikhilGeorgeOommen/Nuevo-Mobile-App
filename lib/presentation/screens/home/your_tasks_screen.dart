@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
 import '../../providers/phase_provider.dart';
+import '../../providers/home_provider.dart';
 import '../../providers/core_providers.dart';
 import '../../../data/models/phase_model.dart';
 import '../../../domain/usecases/phase/phase_usecases.dart';
@@ -32,6 +33,12 @@ class YourTasksScreen extends ConsumerStatefulWidget {
 class _YourTasksScreenState extends ConsumerState<YourTasksScreen> {
   int _durationWeeks = 1;
   bool _isLoadingPhase = true;
+
+  bool _isValidField(String? value) {
+    if (value == null || value.trim().isEmpty) return false;
+    final lower = value.trim().toLowerCase();
+    return lower != 'n_a' && lower != 'n/a' && lower != 'null';
+  }
 
   @override
   void initState() {
@@ -244,7 +251,7 @@ class _YourTasksScreenState extends ConsumerState<YourTasksScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                weeklyView.phaseName,
+                _isValidField(weeklyView.phaseName) ? weeklyView.phaseName : widget.programName,
                 style: TextStyle(
                   fontSize: ResponsiveUtils.fontSize(context, base: 16),
                   fontWeight: FontWeight.w500,
@@ -298,14 +305,20 @@ class _YourTasksScreenState extends ConsumerState<YourTasksScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_left, color: Color(0xFF6B3528)),
-            onPressed: () {
-              final weekNumber = weeklyView.currentWeekGlobal - 1;
-              if (weekNumber >= 1) {
-                ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(weekNumber);
-              }
-            },
+          Visibility(
+            visible: weeklyView.weekInPhase > 1,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_left, color: Color(0xFF6B3528)),
+              onPressed: () {
+                final weekNumber = weeklyView.currentWeekGlobal - 1;
+                if (weekNumber >= 1) {
+                  ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(weekNumber);
+                }
+              },
+            ),
           ),
           Text(
             'Week: ${weeklyView.weekInPhase}/$_durationWeeks',
@@ -362,96 +375,207 @@ class _YourTasksScreenState extends ConsumerState<YourTasksScreen> {
               ),
             ),
           ),
-          IconButton(
-            icon: SvgPicture.asset(
-              'assets/icons/arrow_right.svg',
-              colorFilter: const ColorFilter.mode(Color(0xFF6B3528), BlendMode.srcIn),
-              width: 24,
-              height: 24,
+          Visibility(
+            visible: weeklyView.weekInPhase < _durationWeeks,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_right, color: Color(0xFF6B3528)),
+              onPressed: () {
+                final weekNumber = weeklyView.currentWeekGlobal + 1;
+                if (weeklyView.weekInPhase < _durationWeeks) {
+                  ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(weekNumber);
+                }
+              },
             ),
-            onPressed: () {
-              final weekNumber = weeklyView.currentWeekGlobal + 1;
-              if (weeklyView.weekInPhase < _durationWeeks) {
-                ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(weekNumber);
-              }
-            },
           ),
         ],
       ),
     );
   }
 
+  /// Shows the same confirmation dialog as the home screen for selecting a task status.
+  void _showTaskStatusDialog(BuildContext context, PatientTaskModel task, List<String> options) {
+    final title = task.taskName.isNotEmpty ? task.taskName : (task.phaseTask?.title ?? 'Update Status');
+    String selectedOption = options.first;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF3E160D)),
+                textAlign: TextAlign.center,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Please confirm your selection before submitting.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  ...options.map((opt) => RadioListTile<String>(
+                        title: Text(opt.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w500)),
+                        value: opt,
+                        groupValue: selectedOption,
+                        activeColor: const Color(0xFF964A38),
+                        onChanged: (val) {
+                          if (val != null) setDialogState(() => selectedOption = val);
+                        },
+                      )),
+                ],
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF964A38),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    final rootNavigator = Navigator.of(ctx, rootNavigator: true);
+                    final messenger = ScaffoldMessenger.of(ctx);
+
+                    Navigator.of(ctx).pop(); // dismiss dialog
+
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const PopScope(
+                        canPop: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    );
+
+                    final error = await ref.read(activePhaseTaskProvider.notifier).updateStatus(task.id, selectedOption);
+
+                    rootNavigator.pop(); // dismiss loader
+
+                    if (error == null) {
+                      ref.read(activePhaseProvider.notifier).fetchActivePhase();
+                      ref.refresh(homeDashboardProvider.future);
+                      final currentWeek = ref.read(weeklyViewProvider).value?.currentWeekGlobal;
+                      if (currentWeek != null) {
+                        ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(currentWeek);
+                      } else {
+                        ref.read(weeklyViewProvider.notifier).fetchCurrentWeek();
+                      }
+                      messenger.showSnackBar(const SnackBar(content: Text('Status updated successfully')));
+                    } else {
+                      messenger.showSnackBar(SnackBar(content: Text(error)));
+                    }
+                  },
+                  child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildPendingTaskCard(BuildContext context, PatientTaskModel task) {
+    final options = task.statusOptions.isNotEmpty ? task.statusOptions : (task.phaseTask?.statusOptions ?? []);
+    final isBooleanOptions = options.isNotEmpty && options.every((o) => ['yes', 'no', 'true', 'false'].contains(o.toLowerCase()));
+
     return GestureDetector(
       onTap: () async {
-        if (task.visualIndicator == 'toggle' && task.statusOptions.isNotEmpty) {
-           return; // Do nothing, let user tap the options directly
-        }
-
         if (task.taskType == 'QUESTIONNAIRE') {
-           showDialog(
-             context: context,
-             barrierDismissible: false,
-             builder: (ctx) => const Center(child: CircularProgressIndicator()),
-           );
+          if (isBooleanOptions) {
+            // Show same popup dialog as home screen
+            _showTaskStatusDialog(context, task, options);
+            return;
+          }
 
-           try {
-             final response = await ref.read(apiClientProvider).getTaskById(task.id);
-             if (context.mounted) {
-               Navigator.of(context).pop(); // dismiss loading
-             }
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => const Center(child: CircularProgressIndicator()),
+          );
 
-             if (response.success && response.data != null) {
-               final fullTask = response.data!;
-               final qId = fullTask.phaseTask?.questionnaireId;
-               
-               if (qId != null && qId.isNotEmpty) {
-                 if (context.mounted) {
-                   await context.push('/questionnaire/$qId/${task.id}');
-                   if (context.mounted) {
-                     final currentWeek = ref.read(weeklyViewProvider).value?.currentWeekGlobal;
-                     if (currentWeek != null) {
-                       ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(currentWeek);
-                     } else {
-                       ref.read(weeklyViewProvider.notifier).fetchCurrentWeek();
-                     }
-                   }
-                 }
-               } else {
-                 if (context.mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                     const SnackBar(content: Text('Questionnaire ID not found for this task')),
-                   );
-                 }
-               }
-             } else {
-               if (context.mounted) {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(content: Text(response.message ?? 'Failed to fetch task details')),
-                 );
-               }
-             }
-           } catch (e) {
-             if (context.mounted) {
-               Navigator.of(context).pop(); // dismiss loading
-               ScaffoldMessenger.of(context).showSnackBar(
-                 SnackBar(content: Text('Error fetching task: $e')),
-               );
-             }
-           }
-        } 
-        else if (task.taskType == 'APPOINTMENT') {
-         // context.push('/connecting-session');
+          try {
+            final response = await ref.read(apiClientProvider).getTaskById(task.id);
+            if (context.mounted) {
+              Navigator.of(context).pop(); // dismiss loading
+            }
+
+            if (response.success && response.data != null) {
+              final fullTask = response.data!;
+              final qId = fullTask.phaseTask?.questionnaireId;
+
+              if (qId != null && qId.isNotEmpty) {
+                if (context.mounted) {
+                  await context.push('/questionnaire/$qId/${task.id}');
+                  if (context.mounted) {
+                    // Refresh active phase + home dashboard so progress bar updates
+                    ref.read(activePhaseProvider.notifier).fetchActivePhase();
+                    ref.refresh(homeDashboardProvider.future);
+                    final currentWeek = ref.read(weeklyViewProvider).value?.currentWeekGlobal;
+                    if (currentWeek != null) {
+                      ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(currentWeek);
+                    } else {
+                      ref.read(weeklyViewProvider.notifier).fetchCurrentWeek();
+                    }
+                  }
+                }
+              } else {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Questionnaire ID not found for this task')),
+                  );
+                }
+              }
+            } else {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(response.message ?? 'Failed to fetch task details')),
+                );
+              }
+            }
+          } catch (e) {
+            if (context.mounted) {
+              Navigator.of(context).pop(); // dismiss loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error fetching task: $e')),
+              );
+            }
+          }
+        } else if (task.taskType == 'APPOINTMENT') {
+          if (options.isNotEmpty) {
+            // Show popup dialog for appointment status selection
+            _showTaskStatusDialog(context, task, options);
+          }
         } else {
-           await context.push('/task/${task.id}');
-           if (context.mounted) {
-             final currentWeek = ref.read(weeklyViewProvider).value?.currentWeekGlobal;
-             if (currentWeek != null) {
-               ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(currentWeek);
-             } else {
-               ref.read(weeklyViewProvider.notifier).fetchCurrentWeek();
-             }
-           }
+          if (options.isNotEmpty) {
+            // Show popup dialog for any other task type with options (replaces inline toggles)
+            _showTaskStatusDialog(context, task, options);
+          } else {
+            await context.push('/task/${task.id}');
+            if (context.mounted) {
+              // Refresh active phase + home dashboard so progress bar updates
+              ref.read(activePhaseProvider.notifier).fetchActivePhase();
+              ref.refresh(homeDashboardProvider.future);
+              final currentWeek = ref.read(weeklyViewProvider).value?.currentWeekGlobal;
+              if (currentWeek != null) {
+                ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(currentWeek);
+              } else {
+                ref.read(weeklyViewProvider.notifier).fetchCurrentWeek();
+              }
+            }
+          }
         }
       },
       child: Container(
@@ -469,24 +593,21 @@ class _YourTasksScreenState extends ConsumerState<YourTasksScreen> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              children: [
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    task.taskName.isNotEmpty ? task.taskName : 'Task',
+                    _isValidField(task.taskName) ? task.taskName : 'Task',
                     style: TextStyle(
                       fontSize: ResponsiveUtils.fontSize(context, base: 16),
                       fontWeight: FontWeight.w500,
                       color: const Color(0xFF17110D),
                     ),
                   ),
-                  if (task.practitioner.isNotEmpty) ...[
+                  if (_isValidField(task.practitioner)) ...[
                     SizedBox(height: ResponsiveUtils.spacing(context, base: 4)),
                     Text(
                       task.practitioner,
@@ -514,71 +635,6 @@ class _YourTasksScreenState extends ConsumerState<YourTasksScreen> {
             ),
           ],
         ),
-        if (task.visualIndicator == 'toggle' && task.statusOptions.isNotEmpty) ...[
-          SizedBox(height: ResponsiveUtils.spacing(context, base: 16)),
-          Row(
-            children: task.statusOptions.map((opt) {
-              final isSelected = opt == task.statusValue;
-              return GestureDetector(
-                onTap: isSelected ? null : () async {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    useRootNavigator: true,
-                    builder: (ctx) => const Center(child: CircularProgressIndicator()),
-                  );
-                  
-                  await Future.delayed(const Duration(milliseconds: 100));
-                  
-                  try {
-                    final success = await ref.read(activePhaseTaskProvider.notifier).updateStatus(task.id, opt);
-                    if (context.mounted) {
-                      Navigator.of(context, rootNavigator: true).pop();
-                      if (success) {
-                        final currentWeek = ref.read(weeklyViewProvider).value?.currentWeekGlobal;
-                        if (currentWeek != null) {
-                          ref.read(weeklyViewProvider.notifier).fetchWeekByNumber(currentWeek);
-                        } else {
-                          ref.read(weeklyViewProvider.notifier).fetchCurrentWeek();
-                        }
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Failed to update task status')),
-                        );
-                      }
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      Navigator.of(context, rootNavigator: true).pop();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error: $e')),
-                      );
-                    }
-                  }
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF6B3528) : Colors.white,
-                    border: Border.all(color: isSelected ? const Color(0xFF6B3528) : const Color(0xFFDFDFDF)),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    opt,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF735B4D),
-                      fontSize: ResponsiveUtils.fontSize(context, base: 14),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-          ],
-        ),
       ),
     );
   }
@@ -602,14 +658,14 @@ class _YourTasksScreenState extends ConsumerState<YourTasksScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      task.taskName.isNotEmpty ? task.taskName : 'Task',
+                      _isValidField(task.taskName) ? task.taskName : 'Task',
                       style: TextStyle(
                         fontSize: ResponsiveUtils.fontSize(context, base: 16),
                         fontWeight: FontWeight.w500,
                         color: const Color(0xFF17110D),
                       ),
                     ),
-                    if (task.practitioner.isNotEmpty) ...[
+                    if (_isValidField(task.practitioner)) ...[
                       SizedBox(height: ResponsiveUtils.spacing(context, base: 4)),
                       Text(
                         task.practitioner,

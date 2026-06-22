@@ -580,15 +580,15 @@ class ApiClient {
   }
 
   /// Mark Task Completed — PATCH /phases/my-active-phase/tasks/{taskId}/complete
-  Future<ApiResponse<PatientTaskModel>> markTaskCompleted(
-      String taskId) async {
-    final response = await _dioClient
-        .patch('${ApiConstants.myActivePhaseTasks}/$taskId/complete');
-    return ApiResponse.fromJson(
-      response.data,
-      (json) => PatientTaskModel.fromJson(json as Map<String, dynamic>),
-    );
-  }
+  // Future<ApiResponse<PatientTaskModel>> markTaskCompleted(
+  //     String taskId) async {
+  //   final response = await _dioClient
+  //       .patch('${ApiConstants.myActivePhaseTasks}/$taskId/complete');
+  //   return ApiResponse.fromJson(
+  //     response.data,
+  //     (json) => PatientTaskModel.fromJson(json as Map<String, dynamic>),
+  //   );
+  // }
 
   /// Update Task Status — PATCH /phases/my-active-phase/tasks/{taskId}/status
   Future<ApiResponse<PatientTaskModel>> updateTaskStatus(

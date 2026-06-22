@@ -18,10 +18,47 @@ class ApiResponse<T> {
   });
   
   factory ApiResponse.fromJson(
-    Map<String, dynamic> json,
+    dynamic json,
     T Function(Object? json) fromJsonT,
-  ) =>
-      _$ApiResponseFromJson(json, fromJsonT);
+  ) {
+    try {
+      if (json is Map<String, dynamic>) {
+        final success = json['success'] == true;
+        final message = json['message']?.toString();
+        
+        List<ApiError>? errors;
+        if (json['errors'] is List) {
+          errors = [];
+          for (final e in json['errors'] as List) {
+            if (e is Map<String, dynamic>) {
+              errors.add(ApiError.fromJson(e));
+            }
+          }
+        }
+        
+        T? data;
+        if (json['data'] != null) {
+          try {
+            data = fromJsonT(json['data']);
+          } catch (_) {
+            // Prevent data model schema mismatch crashes
+          }
+        }
+        
+        return ApiResponse<T>(
+          success: success,
+          data: data,
+          message: message,
+          errors: errors,
+        );
+      }
+    } catch (_) {}
+    
+    return ApiResponse<T>(
+      success: false,
+      message: json is Map ? json['message']?.toString() : (json?.toString() ?? 'Invalid server response'),
+    );
+  }
       
   Map<String, dynamic> toJson(Object? Function(T value) toJsonT) =>
       _$ApiResponseToJson(this, toJsonT);

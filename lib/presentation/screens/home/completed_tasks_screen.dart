@@ -47,6 +47,91 @@ class CompletedTasksScreen extends ConsumerWidget {
     );
   }
 
+  void _showTaskStatusDialog(BuildContext context, WidgetRef ref, PatientTaskModel pTask, List<String> options) {
+    final title = pTask.taskName.isNotEmpty ? pTask.taskName : (pTask.phaseTask?.title ?? 'Update Status');
+    String selectedOption = options.first;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF3E160D)),
+                textAlign: TextAlign.center,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Please confirm your selection before submitting.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 24),
+                  ...options.map((opt) => RadioListTile<String>(
+                        title: Text(opt.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w500)),
+                        value: opt,
+                        groupValue: selectedOption,
+                        activeColor: const Color(0xFF964A38),
+                        onChanged: (val) {
+                          if (val != null) setState(() => selectedOption = val);
+                        },
+                      )),
+                ],
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF964A38),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () async {
+                    final rootNavigator = Navigator.of(ctx, rootNavigator: true);
+                    final messenger = ScaffoldMessenger.of(ctx);
+                    
+                    Navigator.of(ctx).pop(); 
+                    
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) => const PopScope(
+                        canPop: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    );
+                    
+                    final error = await ref.read(activePhaseTaskProvider.notifier).updateStatus(pTask.id, selectedOption);
+                    
+                    rootNavigator.pop(); 
+                    
+                    if (error == null) {
+                      ref.read(activePhaseProvider.notifier).fetchActivePhase();
+                      ref.refresh(homeDashboardProvider.future);
+                      messenger.showSnackBar(const SnackBar(content: Text('Status updated successfully')));
+                    } else {
+                      messenger.showSnackBar(SnackBar(content: Text(error)));
+                    }
+                  },
+                  child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final activePhaseState = ref.watch(activePhaseProvider);
@@ -120,8 +205,15 @@ class CompletedTasksScreen extends ConsumerWidget {
                 onTap: tasks[index].isCompleted ? null : () async {
                   final pTask = patientTasks[index];
                   final type = (pTask.taskType.isNotEmpty ? pTask.taskType : (pTask.phaseTask?.taskType ?? '')).toUpperCase();
+                  final options = pTask.statusOptions.isNotEmpty ? pTask.statusOptions : (pTask.phaseTask?.statusOptions ?? []);
+                  final isBooleanOptions = options.isNotEmpty && options.every((o) => ['yes', 'no', 'true', 'false'].contains(o.toLowerCase()));
                   
                   if (type == 'QUESTIONNAIRE') {
+                    if (isBooleanOptions) {
+                      _showTaskStatusDialog(context, ref, pTask, options);
+                      return;
+                    }
+
                     showDialog(
                       context: context,
                       barrierDismissible: false,
@@ -164,12 +256,20 @@ class CompletedTasksScreen extends ConsumerWidget {
                       }
                     }
                   } else if (type == 'APPOINTMENT') {
-                    context.push('/connecting-session');
+                    if (options.isNotEmpty) {
+                      _showTaskStatusDialog(context, ref, pTask, options);
+                    } else {
+                      context.push('/connecting-session');
+                    }
                   } else {
-                    await context.push('/task/${pTask.id}');
-                    if (context.mounted) {
-                      ref.read(activePhaseProvider.notifier).fetchActivePhase();
-                      ref.refresh(homeDashboardProvider.future);
+                    if (isBooleanOptions) {
+                      _showTaskStatusDialog(context, ref, pTask, options);
+                    } else {
+                      await context.push('/task/${pTask.id}');
+                      if (context.mounted) {
+                        ref.read(activePhaseProvider.notifier).fetchActivePhase();
+                        ref.refresh(homeDashboardProvider.future);
+                      }
                     }
                   }
                 },

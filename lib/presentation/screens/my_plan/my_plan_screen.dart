@@ -246,6 +246,8 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
     bool isLast = false,
     VoidCallback? onTap,
   }) {
+    final isSelectable = onTap != null;
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,31 +256,47 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
             width: 32,
             child: Column(
               children: [
-                  if (isFirst)
-                    const SizedBox(height: 14)
-                  else
-                    Container(
-                      width: 2,
-                      height: 14,
-                      color: isCompleted || isActive 
-                          ? const Color(0xFF8D5B4C) 
-                          : const Color(0xFF8D5B4C).withOpacity(0.5),
-                    ),
+                if (isFirst)
+                  const SizedBox(height: 14)
+                else
+                  Container(
+                    width: 2,
+                    height: 14,
+                    color: isCompleted || isActive 
+                        ? const Color(0xFF8D5B4C) 
+                        : const Color(0xFF8D5B4C).withOpacity(0.5),
+                  ),
                 Container(
                   width: 24,
                   height: 24,
                   decoration: BoxDecoration(
-                    color: isCompleted || isActive
-                        ? const Color(0xFF8D5B4C)
-                        : const Color(0xFFE5DCD8),
+                    color: isCompleted
+                        ? const Color(0xFF8D5B4C) // Completed -> Solid brown
+                        : (isActive
+                            ? Colors.white // Active -> White with brown border
+                            : const Color(0xFFE5DCD8)), // Locked/Inactive -> Solid light grey
                     shape: BoxShape.circle,
+                    border: isActive && !isCompleted
+                        ? Border.all(color: const Color(0xFF8D5B4C), width: 2)
+                        : null,
                   ),
-                  child: isCompleted || isActive
-                      ? const Icon(Icons.check, size: 14, color: Colors.white)
-                      : null,
+                  child: Center(
+                    child: isCompleted
+                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                        : (isActive
+                            ? Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF8D5B4C), // Inner dot
+                                  shape: BoxShape.circle,
+                                ),
+                              )
+                            : null),
+                  ),
                 ),
                 if (!isLast)
-                   Expanded(
+                  Expanded(
                     child: isCompleted
                         ? Container(
                             width: 2,
@@ -302,15 +320,58 @@ class _MyPlanScreenState extends ConsumerState<MyPlanScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
                   decoration: BoxDecoration(
-                    color: AppColors.roseSurface,
+                    color: isSelectable
+                        ? (isActive ? const Color(0xFFFCF6F4) : AppColors.roseSurface)
+                        : const Color(0xFFF2ECE9).withOpacity(0.5),
                     borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    title,
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: const Color(0xFF5D4037),
-                      fontWeight: FontWeight.w500,
+                    border: Border.all(
+                      color: isSelectable
+                          ? (isActive ? const Color(0xFF8D5B4C) : const Color(0xFFE5DCD8))
+                          : const Color(0xFFDFDFDF).withOpacity(0.5),
+                      width: isActive ? 1.5 : 1,
                     ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: isSelectable
+                                    ? const Color(0xFF5D4037)
+                                    : const Color(0xFF8D8D8D),
+                                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              isSelectable
+                                  ? (isCompleted ? 'Completed' : (isActive ? 'Active • Tap to view tasks' : 'Tap to view tasks'))
+                                  : 'Locked',
+                              style: TextStyle(
+                                color: isSelectable
+                                    ? (isActive ? const Color(0xFF8D5B4C) : const Color(0xFF8D5B4C).withOpacity(0.7))
+                                    : const Color(0xFFB0B0B0),
+                                fontSize: 12,
+                                fontWeight: isActive ? FontWeight.w500 : FontWeight.w400,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        isSelectable ? Icons.chevron_right : Icons.lock_outline,
+                        color: isSelectable
+                            ? const Color(0xFF8D5B4C)
+                            : const Color(0xFFB0B0B0),
+                        size: 20,
+                      ),
+                    ],
                   ),
                 ),
               ),

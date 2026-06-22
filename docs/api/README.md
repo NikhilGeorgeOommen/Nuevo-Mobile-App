@@ -13,6 +13,7 @@ This folder contains the authoritative API definitions for the Flutter app.
 All API-related code must strictly follow this collection.
 
 Base URL: "https://nuevo-medical-be.simelabs.in/api/v1"
+https://nuevo-medical-be.simelabs.in/api/v1
 
 ## Implementation Details
 

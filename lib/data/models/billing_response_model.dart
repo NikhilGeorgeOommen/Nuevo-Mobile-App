@@ -14,17 +14,19 @@ class BillingResponseData {
 
   factory BillingResponseData.fromJson(Map<String, dynamic> json) {
     return BillingResponseData(
-      currentSubscription: json['currentSubscription'] != null
-          ? CurrentSubscriptionModel.fromJson(json['currentSubscription'])
+      currentSubscription: json['currentSubscription'] is Map<String, dynamic>
+          ? CurrentSubscriptionModel.fromJson(json['currentSubscription'] as Map<String, dynamic>)
           : null,
-      paymentMethods: json['paymentMethods'] != null
+      paymentMethods: json['paymentMethods'] is List
           ? (json['paymentMethods'] as List)
-              .map((e) => PaymentMethodModel.fromJson(e as Map<String, dynamic>))
+              .whereType<Map<String, dynamic>>()
+              .map((e) => PaymentMethodModel.fromJson(e))
               .toList()
           : null,
-      billingHistory: json['billingHistory'] != null
+      billingHistory: json['billingHistory'] is List
           ? (json['billingHistory'] as List)
-              .map((e) => BillingHistoryModel.fromJson(e as Map<String, dynamic>))
+              .whereType<Map<String, dynamic>>()
+              .map((e) => BillingHistoryModel.fromJson(e))
               .toList()
           : null,
     );
@@ -49,13 +51,18 @@ class CurrentSubscriptionModel {
   });
 
   factory CurrentSubscriptionModel.fromJson(Map<String, dynamic> json) {
+    num? parseNum(dynamic val) {
+      if (val is num) return val;
+      if (val is String) return num.tryParse(val);
+      return null;
+    }
     return CurrentSubscriptionModel(
-      programName: json['programName'] as String?,
-      price: json['price'] as num?,
-      frequency: json['frequency'] as String?,
-      status: json['status'] as String?,
-      renewalDate: json['renewalDate'] as String?,
-      startDate: json['startDate'] as String?,
+      programName: json['programName']?.toString(),
+      price: parseNum(json['price']),
+      frequency: json['frequency']?.toString(),
+      status: json['status']?.toString(),
+      renewalDate: json['renewalDate']?.toString(),
+      startDate: json['startDate']?.toString(),
     );
   }
 }
@@ -70,10 +77,12 @@ class PaymentMethodModel {
 
   factory PaymentMethodModel.fromJson(Map<String, dynamic> json) {
     return PaymentMethodModel(
-      brand: json['brand'] as String?,
-      lastFour: json['lastFour'] as String?,
-      expiry: json['expiry'] as String?,
-      isPrimary: json['isPrimary'] as bool?,
+      brand: json['brand']?.toString(),
+      lastFour: json['lastFour']?.toString(),
+      expiry: json['expiry']?.toString(),
+      isPrimary: json['isPrimary'] is bool 
+          ? json['isPrimary'] as bool 
+          : (json['isPrimary'] != null ? json['isPrimary'].toString().toLowerCase() == 'true' : null),
     );
   }
 }
@@ -98,14 +107,19 @@ class BillingHistoryModel {
   });
 
   factory BillingHistoryModel.fromJson(Map<String, dynamic> json) {
+    num? parseNum(dynamic val) {
+      if (val is num) return val;
+      if (val is String) return num.tryParse(val);
+      return null;
+    }
     return BillingHistoryModel(
       id: json['id']?.toString(),
-      description: json['description'] as String?,
-      date: json['date'] as String?,
-      amount: json['amount'] as num?,
-      currency: json['currency'] as String?,
-      status: json['status'] as String?,
-      receiptNumber: json['receiptNumber'] as String?,
+      description: json['description']?.toString(),
+      date: json['date']?.toString(),
+      amount: parseNum(json['amount']),
+      currency: json['currency']?.toString(),
+      status: json['status']?.toString(),
+      receiptNumber: json['receiptNumber']?.toString(),
     );
   }
 }

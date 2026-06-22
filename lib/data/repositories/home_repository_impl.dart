@@ -19,16 +19,16 @@ class HomeRepositoryImpl implements HomeRepository {
       final response = await _client.get(ApiConstants.home);
 
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
+      if (response.statusCode == 200 && response.data is Map && response.data['success'] == true) {
         try {
           final dashboardModel = HomeDashboardModel.fromJson(response.data);
           return Right(dashboardModel.toEntity());
         } catch (e, stackTrace) {
-
           return Left(ServerFailure('Failed to parse dashboard data: $e'));
         }
       } else {
-        return Left(ServerFailure(response.data['message'] ?? 'Failed to load dashboard'));
+        final message = response.data is Map ? response.data['message']?.toString() : null;
+        return Left(ServerFailure(message ?? 'Failed to load dashboard'));
       }
     } on AppException catch (e) {
       return Left(ServerFailure(e.message));

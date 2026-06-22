@@ -53,6 +53,8 @@ class UserRepositoryImpl implements UserRepository {
     String? phoneNumber,
     String? profileImageUrl,
     String? dateOfBirth,
+    double? height,
+    double? weight,
   }) async {
     try {
       final nameParts = name?.trim().split(' ');
@@ -68,6 +70,12 @@ class UserRepositoryImpl implements UserRepository {
       }
       if (dateOfBirth != null && dateOfBirth.isNotEmpty) {
         formData.fields.add(MapEntry('dateOfBirth', dateOfBirth));
+      }
+      if (height != null) {
+        formData.fields.add(MapEntry('height', height.toString()));
+      }
+      if (weight != null) {
+        formData.fields.add(MapEntry('weight', weight.toString()));
       }
       if (profileImageUrl != null && profileImageUrl.isNotEmpty && !profileImageUrl.startsWith('http')) {
         formData.files.add(MapEntry(

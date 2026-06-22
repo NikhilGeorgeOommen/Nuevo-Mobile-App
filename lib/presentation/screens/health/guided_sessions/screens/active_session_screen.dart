@@ -77,7 +77,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               child: Image.network(
                 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?ixlib=rb-4.0.3&auto=format&fit=crop&w=1740&q=80',
                 fit: BoxFit.cover,
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 colorBlendMode: BlendMode.darken,
                 errorBuilder: (context, error, stackTrace) {
                   return const Center(child: Icon(Icons.videocam_off, size: 50, color: Colors.grey));
@@ -141,7 +141,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                             color: AppColors.primaryColor,
                             boxShadow: [
                               BoxShadow(
-                                color: AppColors.primaryColor.withOpacity(0.4),
+                                color: AppColors.primaryColor.withValues(alpha: 0.4),
                                 blurRadius: 20,
                                 spreadRadius: 5,
                               )

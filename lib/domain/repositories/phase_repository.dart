@@ -14,7 +14,7 @@ abstract class PhaseRepository {
   Future<Either<Failure, PhaseProgressModel>> getPhaseProgress();
   Future<Either<Failure, WeeklyViewModel>> getWeekByNumber(int weekNumber);
   Future<Either<Failure, PatientTaskModel>> getTaskById(String taskId);
-  Future<Either<Failure, PatientTaskModel>> markTaskCompleted(String taskId);
+  // Future<Either<Failure, PatientTaskModel>> markTaskCompleted(String taskId);
   Future<Either<Failure, PatientTaskModel>> updateTaskStatus(
       String taskId, String statusValue);
 }

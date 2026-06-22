@@ -76,10 +76,14 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 
 /// Dio Client Provider
 final dioClientProvider = Provider<DioClient>((ref) {
-  final secureStorage = ref.watch(secureStorageProvider);
   return DioClient(
     getAccessToken: () async {
-      return await secureStorage.read(key: StorageKeys.accessToken);
+      try {
+        final localDataSource = ref.read(localDataSourceProvider);
+        return await localDataSource.getAccessToken();
+      } catch (_) {
+        return null;
+      }
     },
     onUnauthorized: () {
       // Trigger logout event without directly depending on authProvider
@@ -354,11 +358,11 @@ final getTaskByIdUseCaseProvider = Provider<GetTaskByIdUseCase>((ref) {
   return GetTaskByIdUseCase(repository);
 });
 
-final markTaskCompletedUseCaseProvider =
-    Provider<MarkTaskCompletedUseCase>((ref) {
-  final repository = ref.watch(phaseRepositoryProvider);
-  return MarkTaskCompletedUseCase(repository);
-});
+// final markTaskCompletedUseCaseProvider =
+//     Provider<MarkTaskCompletedUseCase>((ref) {
+//   final repository = ref.watch(phaseRepositoryProvider);
+//   return MarkTaskCompletedUseCase(repository);
+// });
 
 final updateTaskStatusUseCaseProvider =
     Provider<UpdateTaskStatusUseCase>((ref) {

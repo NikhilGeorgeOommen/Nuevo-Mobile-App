@@ -21,12 +21,16 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _dobController;
+  late TextEditingController _heightController;
+  late TextEditingController _weightController;
   DateTime? _selectedDate;
   File? _selectedImage;
 
   bool _isInitialized = false;
   String _initialName = '';
   String _initialDob = '';
+  String _initialHeight = '';
+  String _initialWeight = '';
 
   void _onFieldChanged() {
     setState(() {});
@@ -38,9 +42,13 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
     _nameController = TextEditingController();
     _emailController = TextEditingController();
     _dobController = TextEditingController();
+    _heightController = TextEditingController();
+    _weightController = TextEditingController();
     
     _nameController.addListener(_onFieldChanged);
     _dobController.addListener(_onFieldChanged);
+    _heightController.addListener(_onFieldChanged);
+    _weightController.addListener(_onFieldChanged);
     
     // Initialize with user data if available
     // In a real app, we'd listen to the provider. For now, we'll set defaults or wait for the provider build.
@@ -51,6 +59,8 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _dobController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
   
@@ -58,6 +68,8 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
     if (!_isInitialized) return false;
     if (_nameController.text.trim() != _initialName.trim()) return true;
     if (_dobController.text.trim() != _initialDob.trim()) return true;
+    if (_heightController.text.trim() != _initialHeight.trim()) return true;
+    if (_weightController.text.trim() != _initialWeight.trim()) return true;
     if (_selectedImage != null) return true;
     return false;
   }
@@ -103,6 +115,13 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
       } else {
         _initialDob = '';
       }
+      
+      _heightController.text = user.height != null ? user.height.toString() : '';
+      _initialHeight = _heightController.text;
+      
+      _weightController.text = user.weight != null ? user.weight.toString() : '';
+      _initialWeight = _weightController.text;
+      
       _isInitialized = true;
     }
 
@@ -248,6 +267,45 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
                       suffixIcon: Icons.calendar_today_outlined,
                     ),
                   ),
+                ),
+                
+                const SizedBox(height: 24),
+
+                // Height and Weight Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Height (cm)'),
+                          const SizedBox(height: 8),
+                          _buildTextField(
+                            controller: _heightController,
+                            hint: '',
+                            icon: null,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Weight (kg)'),
+                          const SizedBox(height: 8),
+                          _buildTextField(
+                            controller: _weightController,
+                            hint: '',
+                            icon: null,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 
                 const SizedBox(height: 48),
@@ -405,11 +463,24 @@ class _AccountSettingsScreenState extends ConsumerState<AccountSettingsScreen> {
       if (_selectedImage != null) {
          updatedImage = _selectedImage!.path;
       }
+      
+      double? updatedHeight;
+      if (_heightController.text.trim() != _initialHeight.trim()) {
+         updatedHeight = double.tryParse(_heightController.text.trim());
+      }
+      
+      double? updatedWeight;
+      if (_weightController.text.trim() != _initialWeight.trim()) {
+         updatedWeight = double.tryParse(_weightController.text.trim());
+      }
+
 //      print(updatedImage);
       await ref.read(userProvider.notifier).updateProfile(
         name: updatedName,
         dateOfBirth: updatedDob,
         profileImageUrl: updatedImage,
+        height: updatedHeight,
+        weight: updatedWeight,
       );
 
       if (mounted) {
